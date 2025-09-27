@@ -8,12 +8,12 @@ from datetime import datetime
 
 #This session is basically for the configuration
 app  = Flask(__name__)
-app.config=['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URI", "sqlite:///messages.db")
-app.config=['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URI", "sqlite:///messages.db")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 CORS(app)
 socketio = SocketIO(app, cors_allowed_prigin="*")
 
-db.init_app()
+db.init_app(app)
 
 with app.app_context():
     db.create_all()
@@ -22,13 +22,13 @@ with app.app_context():
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status", "ok"}), 200
+    return jsonify({"status": "ok"}), 200
 
 @app.route("/messages", methods=["GET"])
 def get_messages():
     room = request.args.get("room")
     if not room:
-        return jsonify({"error","room query param required"}), 400
+        return jsonify({"error": "room query param required"}), 400
 
     limit = int(request.args.get("limit", 50))
     before = request.args.get("before")
@@ -39,8 +39,8 @@ def get_messages():
         try:
             before_dt = datetime.fromisoformat(before)
             query=query.filter(Message.timestamp<before_dt)
-            except Exception:
-                return jsonify({"error": "invalid before timestamp format"}), 400 
+        except Exception:
+            return jsonify({"error": "invalid before timestamp format"}), 400 
 
     messages= query.limit(limit).all()
     messages= list(reversed([m.to_dict() for m in messages]))
@@ -90,4 +90,40 @@ def on_leave(data):
 @socketio.on("message")
 def on_message(data):
     room = data.get("room")
-    username = data
+    username = data.get("username", "anonymous")
+    body = data.get("body")
+    if not room or not body:
+        emit(
+
+            "error",{
+                "error", "room and body are required"
+            }
+        )
+
+        return
+    msg = Message(username=username, body=body, room=room)
+    db.session.add(msg)
+    db.session.commit()
+
+    payload={
+        "id": msg.id,
+        "room": room,
+        "username": username,
+        "body": body,
+        "timestamp": msg.timestamp.isoformat()
+    }
+    emiit(
+        "message",
+        payload,
+        room=room
+    )
+
+
+@socketio.on("disconnect")
+def on_disconnect():
+    print("client disconnected")
+
+
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+
