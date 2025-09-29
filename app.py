@@ -24,8 +24,13 @@ with app.app_context():
 
 #JWt sessoin.
 
-def create_token(username= str, hours_valid int=1) -> str:
-    payload{"username": username, "exp": datetime.utcnow() + timedelta(hours=hours_valid), "iat": datetime.utcnow()}
+def create_token(username= str, hours_valid: int = 1) -> str:
+    payload{
+        "username": username, 
+        "exp": datetime.utcnow() + timedelta(hours=hours_valid), 
+        "iat": datetime.utcnow()
+        }
+
 
     token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
     return token.decode("utf-8") if isinstance(token, bytes) else token
