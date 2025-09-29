@@ -1,4 +1,5 @@
 import os
+import jwt
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -8,6 +9,8 @@ from datetime import datetime
 
 #This session is basically for the configuration
 app  = Flask(__name__)
+SECRET_KEY = "####"
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URI", "sqlite:///messages.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 CORS(app)
@@ -63,6 +66,18 @@ def delete_room_messages():
         db.session.commit()
         return jsonify({"messages": "deleted messages for room {room}"}), 200
 
+
+@app route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username")
+
+    if not username:
+        return jsonify({"error": "Username required"}), 400
+
+
+#We configure the sockets events
+
 @socketio.on("join")
 def on_join(data):
     room = data.get("room")
@@ -89,7 +104,7 @@ def on_leave(data):
 
 @socketio.on("message")
 def on_message(data):
-    room = data.get("room")
+    room = data.get("room") 
     username = data.get("username", "anonymous")
     body = data.get("body")
     if not room or not body:
