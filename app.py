@@ -9,7 +9,7 @@ from datetime import datetime
 
 #This session is basically for the configuration
 app  = Flask(__name__)
-SECRET_KEY = "####"
+SECRET_KEY = "iammerge"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URI", "sqlite:///messages.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -20,6 +20,18 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+
+#JWt sessoin.
+
+def create_token(username= str, hours_valid int=1) -> str:
+    payload{"username": username, "exp": datetime.utcnow() + timedelta(hours=hours_valid), "iat": datetime.utcnow()}
+
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+    return token.decode("utf-8") if isinstance(token, bytes) else token
+
+def decode_token(token: str):
+    return jwt.decode(token, JWT_SECRET, algorithm=["HS256"])
 
 #We now work on the REST endpoints here 
 
@@ -65,18 +77,46 @@ def delete_room_messages():
         Message.query.filter_by(room=room).delete()
         db.session.commit()
         return jsonify({"messages": "deleted messages for room {room}"}), 200
+#Authentication here.
 
+@app route("/signup", methods=["POST"])
+def signup():
+    data = request.get_json() or {}
+    username = data.get("username")
+    email = data.get("email")
+    password = data.get("password")
+    full_name = data.get("full_name")
+
+    if not username or not email or not password:
+        return jsonify({"error": "username, email and password required"}), 400
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({"error": "user is already taken"}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "Email is already registered"}), 400
+
+    user = User(username=username, email=email, full_name=full_name)
+    user.set_password(password)
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({"message": "user created", "user": user.to_dict()}), 201
 
 @app route("/login", methods=["POST"])
 def login():
     data = request.get_json()
     username = data.get("username")
+    password = data.get("password")
 
-    if not username:
-        return jsonify({"error": "Username required"}), 400
+    user = User.query.filter_by(username=username).first()
+    if not user or not user.check_password(password):
+        return jsonify({"eeror": "Invalid Credentials"}), 401
 
-
-#We configure the sockets events
+    token = create_token(user.username)
+    return jsnoify({"token": token, "user": user.to_dict()}), 200
+        
+#We now configure the sockets events here
 
 @socketio.on("join")
 def on_join(data):
