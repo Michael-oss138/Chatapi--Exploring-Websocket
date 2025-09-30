@@ -3,16 +3,19 @@ import jwt
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from models import db, Message
-from datetime import datetime
+from models import db, Message, User
+from datetime import datetime, timedelta
 
 
 #This session is basically for the configuration
 app  = Flask(__name__)
-SECRET_KEY = "iammerge"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URI", "sqlite:///messages.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+JWT_SECRET = os.getenv("JWT_SECRET", "iammerge")
+
 CORS(app)
 socketio = SocketIO(app, cors_allowed_prigin="*")
 
@@ -25,7 +28,7 @@ with app.app_context():
 #JWt sessoin.
 
 def create_token(username= str, hours_valid: int = 1) -> str:
-    payload{
+    payload = {
         "username": username, 
         "exp": datetime.utcnow() + timedelta(hours=hours_valid), 
         "iat": datetime.utcnow()
@@ -84,7 +87,7 @@ def delete_room_messages():
         return jsonify({"messages": "deleted messages for room {room}"}), 200
 #Authentication here.
 
-@app route("/signup", methods=["POST"])
+@app.route("/signup", methods=["POST"])
 def signup():
     data = request.get_json() or {}
     username = data.get("username")
@@ -108,7 +111,7 @@ def signup():
 
     return jsonify({"message": "user created", "user": user.to_dict()}), 201
 
-@app route("/login", methods=["POST"])
+@app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
     username = data.get("username")
@@ -116,10 +119,10 @@ def login():
 
     user = User.query.filter_by(username=username).first()
     if not user or not user.check_password(password):
-        return jsonify({"eeror": "Invalid Credentials"}), 401
+        return jsonify({"error": "Invalid Credentials"}), 401
 
     token = create_token(user.username)
-    return jsnoify({"token": token, "user": user.to_dict()}), 200
+    return jsonify({"token": token, "user": user.to_dict()}), 200
         
 #We now configure the sockets events here
 

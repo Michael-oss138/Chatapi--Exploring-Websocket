@@ -13,7 +13,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, raw_password: str):
-        self.password_hash = generate.password_hash(raw_password)
+        self.password_hash = generate_password_hash(raw_password)
 
 
     def check_password(self, raw_password: str) -> bool:
@@ -26,7 +26,7 @@ class User(db.Model):
             "username": self.username,
             "email": self.email,
             "full_name": self.full_name,
-            "created_at": self.created_at.isoformar()
+            "created_at": self.created_at.isoformat()
         }
 
 class Message(db.Model):
