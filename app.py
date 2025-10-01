@@ -17,7 +17,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 JWT_SECRET = os.getenv("JWT_SECRET", "iammerge")
 
 CORS(app)
-socketio = SocketIO(app, cors_allowed_prigin="*")
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 db.init_app(app)
 
@@ -56,7 +56,7 @@ def get_messages():
     limit = int(request.args.get("limit", 50))
     before = request.args.get("before")
 
-    query = Message.query.filter_by(room=room).order_by(Message.timestamp.dict())
+    query = Message.query.filter_by(room=room).order_by(Message.timestamp.desc())
 
     if before:
         try:
@@ -82,9 +82,9 @@ def delete_room_messages():
     room = request.args.get("room")
     if not room:
         return jsonify({"error": "room query param required"}), 400
-        Message.query.filter_by(room=room).delete()
-        db.session.commit()
-        return jsonify({"messages": "deleted messages for room {room}"}), 200
+    Message.query.filter_by(room=room).delete()
+    db.session.commit()
+    return jsonify({"messages": "deleted messages for room {room}"}), 200
 #Authentication here.
 
 @app.route("/signup", methods=["POST"])
@@ -133,8 +133,9 @@ def on_join(data):
     if not room:
         emit({"error": "room required for join"})
         return
-        join_room(room)
-        emit("status",{"msg": f"{username} has joined {room}"}, room=room)
+
+    join_room(room)
+    emit("status",{"msg": f"{username} has joined {room}"}, room=room)
 
 @socketio.on("leave")
 def on_leave(data):
@@ -143,12 +144,9 @@ def on_leave(data):
     if not room:
         emit({"error": "room required for leave"}), 200
         return
-        leave_room(room)
-        emit(
-            "status",{
-                "msg": f"{username} has left {room}"
-            }, room=room
-        )
+
+    leave_room(room)
+    emit("status",{"msg": f"{username} has left {room}"}, room=room)
 
 @socketio.on("message")
 def on_message(data):
@@ -175,11 +173,7 @@ def on_message(data):
         "body": body,
         "timestamp": msg.timestamp.isoformat()
     }
-    emiit(
-        "message",
-        payload,
-        room=room
-    )
+    emit("message", payload, room=room)
 
 
 @socketio.on("disconnect")
