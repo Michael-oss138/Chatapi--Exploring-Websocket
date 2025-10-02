@@ -1,8 +1,0 @@
-Flask
-flask-cors
-flask-socketio
-flask-sqlalchemy
-werkzeug
-python-dotenv
-PyJWT
-eventlet
