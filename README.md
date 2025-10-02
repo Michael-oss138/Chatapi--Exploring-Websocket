@@ -14,3 +14,11 @@ Start the server at python app.py
 
 Test the endpoints using postman.
 
+Enpoints are 
+signup - POST
+login - POST
+health -GET
+rooms - GET
+messages - GET/DELETE
+
+
