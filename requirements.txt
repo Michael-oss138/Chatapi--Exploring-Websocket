@@ -6,3 +6,4 @@ werkzeug
 python-dotenv
 PyJWT
 eventlet
+gunicorn
